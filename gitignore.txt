@@ -1,0 +1,60 @@
+# Save this file as .gitignore in the project root.
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.work/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Local settings, secrets and temporary app data
+.env
+.env.*
+!.env.example
+saved_applications.json
+saved_applications.lock
+saved-apps-*.tmp
+*.log
+*.pem
+*.key
+
+# Personal backups and local package snapshots
+legacy/
+backup/
+backups/
+requirements-before-review.txt
+*.zip
+
+# Downloaded models and large local data
+models/
+AskAIModels/
+OllamaModels/
+*.gguf
+*.onnx
+*.safetensors
+*.pt
+*.pth
+*.bin
+
+# Personal media and generated conversions
+*_converted.*
+*.mp3
+*.wav
+*.mp4
+*.m4a
+*.flac
+*.ogg
+*.opus
+*.mov
+*.mkv
+*.webm
+*.jpg
+*.jpeg
+*.png
+*.pdf
+
+# Deliberately selected, non-private documentation images may be published.
+!docs/images/*.png
+!docs/images/*.jpg
+!docs/images/*.jpeg

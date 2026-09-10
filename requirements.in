@@ -1,0 +1,9 @@
+# Direct dependencies only, NOT a tested/version-locked environment.
+# Keep your existing working venv. Save its exact versions with pip freeze.
+Pillow
+pypdf
+faster-whisper
+imageio-ffmpeg
+rapidocr
+onnxruntime
+omegaconf>=2.3.0
