@@ -6,6 +6,9 @@ AskAI combines local AI models with Python tools to answer questions about selec
 
 **Status:** personal development project. The current interface is a terminal window, not a packaged desktop installer. Windows setup is required. Models can make mistakes.
 
+## Demo
+https://github.com/user-attachments/assets/e388f68b-fdae-4f2e-81b8-e2e85c679af4
+
 ## What you can do
 
 | Selection | Examples |
