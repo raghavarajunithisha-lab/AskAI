@@ -1,6 +1,6 @@
-# AskAI â€” a local AI assistant for Windows files
+# AskAI a local AI assistant for Windows files
 
-Right-click a file or folder â†’ **Show more options â†’ Ask AI** â†’ ask a question or request an action.
+Right-click a file or folder → **Show more options → Ask AI** → ask a question or request an action.
 
 AskAI combines local AI models with Python tools to answer questions about selected files, convert images, audio and video, create a PDF from an image, and open a selection in an application after confirmation.
 
@@ -61,7 +61,7 @@ A measured Windows installation folder at `D:\Projects\AskAI` shows **531 MB of 
 
 The three listed AI models total roughly **3.6 GB**. They are downloaded once and reused unless removed, changed or updated. They are not included in a source ZIP. A ZIP download, an extracted source folder, an installed environment and a complete installation with models have different sizes.
 
-**Planning estimate, not a measured minimum:** reserve around **12â€“15 GB of free disk space for a fresh full setup**, plus space for source files, outputs and temporary conversions. Large videos or extra models can require much more. Existing installations can reuse their models and tools; the video-conversion update itself adds no new AI model.
+**Planning estimate, not a measured minimum:** reserve around **12 to 15 GB of free disk space for a fresh full setup**, plus space for source files, outputs and temporary conversions. Large videos or extra models can require much more. Existing installations can reuse their models and tools; the video-conversion update itself adds no new AI model.
 
 To measure your own installation, check folder Properties for the project, `MODEL_ROOT`, the active `OLLAMA_MODELS` folder and the Ollama installation. Run `ollama list` to inspect installed Ollama model sizes. Paths can be on different drives; each drive needs enough free space for the files stored there.
 
@@ -94,7 +94,7 @@ Actual use depends on the loaded model, context length, image/video dimensions, 
 - **Chat/vision:** Ollama can use a supported GPU, CPU, or a combination. Dedicated VRAM and system RAM are separate resources; integrated GPUs share system memory.
 - **Speech:** the current faster-whisper configuration uses CPU inference with `int8` computation and four CPU threads.
 - **Video conversion:** the configured encoders are software encoders; a GPU used by Ollama does not automatically accelerate these conversions.
-- **Conversation memory:** only the last four messages, usually two questionâ€“answer exchanges, are retained in the history list. Selected-file content or prepared images can also be cached in RAM for follow-up questions.
+- **Conversation memory:** only the last four messages, usually two question answer exchanges, are retained in the history list. Selected-file content or prepared images can also be cached in RAM for follow-up questions.
 - **Model lifetime:** some requests explicitly unload an Ollama model; others use the server's retention settings. Closing AskAI releases its Python session memory but does not necessarily stop Ollama or immediately unload every model. Unloading a model frees runtime memory without deleting its downloaded files.
 
 Use Windows Task Manager to observe Python, reader workers, FFmpeg and Ollama while a task is running. `ollama ps` shows models currently loaded by Ollama. `/clear` removes the application's recent conversation history but retains its cached file content; `/refresh` clears both. Neither command deletes downloaded models.
@@ -202,7 +202,7 @@ mkdir "D:\OllamaModels"
 setx OLLAMA_MODELS "D:\OllamaModels"
 ```
 
-Then **quit Ollama from its system-tray icon**, close Command Prompt, and open a new Command Prompt. Run `ollama serve` there to start the server with the new setting; leave that window open. If the port is already in use, an Ollama server is still runningâ€”quit that server before starting another.
+Then **quit Ollama from its system-tray icon**, close Command Prompt, and open a new Command Prompt. Run `ollama serve` there to start the server with the new setting; leave that window open. If the port is already in use, an Ollama server is still running, quit that server before starting another.
 
 Open another Command Prompt and run the model download commands above. `setx` changes future processes, not an already-running Ollama server. Existing model files are not automatically moved. See [Ollama's model-location instructions](https://docs.ollama.com/windows).
 
@@ -248,7 +248,7 @@ python setup_context_menu.py install
 
 This adds entries to **your current Windows user's registry** for files and folders. It does not require running the terminal as administrator.
 
-Now right-click **one** file or folder â†’ **Show more options â†’ Ask AI** on Windows 11. A terminal opens with that selection already supplied. On other supported Windows versions, look directly in the context menu.
+Now right-click **one** file or folder → **Show more options → Ask AI** on Windows 11. A terminal opens with that selection already supplied. On other supported Windows versions, look directly in the context menu.
 
 Keep Ollama running. You do not need to activate the environment manually when launching through the menu; the menu already points to the project's environment.
 
@@ -269,17 +269,17 @@ The program checks which of its configured encoders are available and displays t
 | Type | Configured outputs, when available |
 | --- | --- |
 | Single still image | PNG, JPG/JPEG, WebP, BMP, TIFF/TIF, GIF, ICO, TGA, PPM, PGM, PBM, PCX, QOI, AVIF, JP2 |
-| Image â†’ document | Single-page PDF containing the image |
+| Image → document | Single-page PDF containing the image |
 | Audio, or audio extracted from video | MP3, WAV, FLAC, OGG, Opus, M4A, AAC, AIFF/AIF, WMA, AC3, MP2, CAF, AU, W64, MKA |
 | Video: MP4, MOV, MKV, AVI or WebM input | MP4, MOV, MKV, AVI or WebM output |
 
-Image conversion corrects orientation and removes embedded metadata. Transparency is retained where implemented; formats without it use white. GIF reduces color/alpha precision, PGM is grayscale, PBM is black-and-white, and ICO fits the image into a 256 Ã— 256 square. Lossy formats can reduce quality. The image PDF is not OCR-generated editable text.
+Image conversion corrects orientation and removes embedded metadata. Transparency is retained where implemented; formats without it use white. GIF reduces color/alpha precision, PGM is grayscale, PBM is black-and-white, and ICO fits the image into a 256 x 256 square. Lossy formats can reduce quality. The image PDF is not OCR-generated editable text.
 
 Audio conversion uses intermediate 48 kHz, stereo, 16-bit PCM. Transcription uses 16 kHz mono. Converting to a lossless format cannot recover quality lost in the source.
 
 Video conversion re-encodes the first video track and first audio track, if present, for the full duration. Silent videos are supported. MP4/MOV/MKV use H.264 + AAC; AVI uses MPEG-4 Part 2 + MP3; WebM uses VP9 + Opus. Extra tracks, subtitles, chapters and source metadata are not retained. Odd frame dimensions are padded to even values. HDR-specific tone mapping is not implemented.
 
-Examples: MOV â†’ MP4, MP4 â†’ MOV, MKV â†’ WebM, AVI â†’ MP4, WAV â†’ FLAC, JPG â†’ PNG. Video â†’ audio requires an audio track. Audio â†’ video, image â†’ video and PDF â†’ image are not implemented. Animated and multipage images are excluded.
+Examples: MOV → MP4, MP4 → MOV, MKV → WebM, AVI → MP4, WAV → FLAC, JPG → PNG. Video → audio requires an audio track. Audio → video, image → video and PDF → image are not implemented. Animated and multipage images are excluded.
 
 For video conversion without the AI chat interface, use:
 
@@ -309,7 +309,7 @@ python video_converter.py "C:\Videos\input.mkv" "C:\Videos\output.mp4"
 | PDF questions | Up to 5 pages and 12,000 extracted characters per read; the final file-chat prompt uses at most 6,000 content characters. |
 | Folder questions | Up to 50 immediate entries; contents are not recursively read. |
 | Reader/image/audio conversion processes | Typically 120-second timeout; speech worker: 900 seconds. First downloads count toward the relevant timeout. |
-| Chat history | Last four messages, usually two questionâ€“answer exchanges. |
+| Chat history | Last four messages, usually two question to answer exchanges. |
 
 Most limits are configured in `config.py`; the video timeout is `VIDEO_TIMEOUT` in `video_converter.py`. Some messages use the current default limits. Converting a long video does not make its full audio eligible for transcription: the transcription limits still apply.
 
@@ -381,6 +381,4 @@ Model backends: Qwen3 through Ollama, Moondream through Ollama, [faster-whisper]
 AskAI works as a local Windows assistant that connects a selected file or folder to Python tools and locally running AI models. It supports file questions, image/audio/video conversion and confirmed application launching through a terminal opened from the right-click menu.
 
 The project is a working development prototype, not a packaged desktop release. Compatibility and performance depend on the computer, installed dependencies, model versions and media codecs; not every configuration has been tested. AI answers should be checked against the source, and the project does not claim security certification or guaranteed accuracy.
-
-Model and dependency licenses apply separately. Check the repository's `LICENSE` file, if one is provided, for permission to reuse the project code.
 
