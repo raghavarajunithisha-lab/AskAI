@@ -1,10 +1,17 @@
 import argparse
 import json
+import re
 from pathlib import Path
 from tkinter import Tk, filedialog
 
 from config import TEXT_MODEL
 from safety import local_path, fingerprint
+
+from video_converter import (
+    VIDEO_INPUTS,
+    convert_video,
+    video_formats,
+)
 
 from converter import (
     INPUT_FORMATS,
@@ -53,6 +60,46 @@ def choose_action(
     history,
     applications,
 ):
+    # Handle complete, direct conversion requests without model guessing.
+    #
+    # Examples:
+    # convert to mp4
+    # convert mp4 to webm
+    # convert this to wav
+    # can you convert this to png?
+    direct = re.fullmatch(
+        r"(?:(?:can|could|would)\s+you\s+)?"
+        r"(?:please\s+)?"
+        r"(?:convert|export|save|change|turn)"
+        r"(?:\s+(?:this|it|my|the|selected|file|video|audio|image|picture|"
+        r"mp4|mov|mkv|avi|webm|mp3|wav|png|jpg|jpeg))*"
+        r"\s+(?:to|as|into)\s+"
+        r"(?:an?\s+)?\.?([a-z0-9]+)"
+        r"(?:\s+(?:format|video|audio|image|file))*"
+        r"(?:\s+please)?[.!?]?",
+        question.strip(),
+        re.IGNORECASE,
+    )
+
+    if direct:
+        target = canonical_format(direct.group(1))
+        supported = target in outputs
+
+        return {
+            "action": "convert" if supported else "clarify",
+            "application": "",
+            "output_format": target if supported else "",
+            "message": (
+                ""
+                if supported
+                else (
+                    f"{target.upper()} output is not available "
+                    "for this selection. "
+                    f"Available outputs: {', '.join(outputs) or 'none'}."
+                )
+            ),
+        }
+
     schema = {
         "type": "object",
         "properties": {
@@ -89,9 +136,12 @@ def choose_action(
         "Route a request for one selected local file or folder. "
         "answer: answer questions or summarize its content. "
         "open: launch the selection in an application. "
-        "convert: convert the selected image, or convert/extract its audio. "
+        "convert: convert the selected image, or convert/extract "
+        "its audio, or convert a supported video to another "
+        "available video format. "
         "clarify: unclear request or unsupported operation. "
-        "For images, conversion includes making a single-page PDF from the image. "
+        "For images, conversion includes making a single-page "
+        "PDF from the image. "
         "Use only the supplied allowed_output_formats for conversion. "
         "output_format is the TARGET, never the source. "
         "JPEG means jpg; TIF means tiff; AIF means aiff. "
@@ -99,8 +149,12 @@ def choose_action(
         "do not ask for it again. "
         "If unsupported, explain which outputs are available; "
         "never substitute another format. "
-        "Do not claim support for video encoding, PDF-to-image, animation, "
-        "resizing, trimming, volume changes, image generation, or other editing. "
+        "Video input formats are MP4, MOV, MKV, AVI, and WebM. "
+        "Video output must be in allowed_output_formats. "
+        "Audio-only files cannot become video. "
+        "Do not claim support for PDF-to-image, animation, "
+        "resizing, trimming, volume changes, image generation, "
+        "or other editing. "
         "Use recent user requests only to resolve follow-ups. "
         "Do not repeat old actions. "
         "For open, supply an application search name, "
@@ -142,9 +196,9 @@ def choose_action(
                             "allowed_output_formats": outputs,
                             "available_application_names": applications,
                             "recent_user_requests": [
-                                h["content"]
-                                for h in history[-4:]
-                                if h["role"] == "user"
+                                item["content"]
+                                for item in history[-4:]
+                                if item["role"] == "user"
                             ],
                             "request": question,
                         },
@@ -168,8 +222,8 @@ def choose_action(
         )
 
     if not all(
-        isinstance(v, str)
-        for v in decision.values()
+        isinstance(value, str)
+        for value in decision.values()
     ):
         raise ValueError(
             "The AI returned invalid action values."
@@ -178,7 +232,10 @@ def choose_action(
     action = decision["action"]
 
     if action not in {
-        "answer", "open", "convert", "clarify"
+        "answer",
+        "open",
+        "convert",
+        "clarify",
     }:
         raise ValueError("Unsupported action.")
 
@@ -186,6 +243,38 @@ def choose_action(
         decision["output_format"] = canonical_format(
             decision["output_format"]
         )
+
+        # Reject substitutions when a known target is explicitly
+        # named in a request handled by the model.
+        targets = re.findall(
+            r"\b(?:to|into|as)\s+(?:an?\s+)?\.?([a-z0-9]+)\b",
+            question,
+            re.IGNORECASE,
+        )
+
+        known = (
+            set(audio_formats())
+            | set(image_formats())
+            | {
+                extension.lstrip(".")
+                for extension in VIDEO_INPUTS
+            }
+        )
+
+        explicit = {
+            canonical_format(target)
+            for target in targets
+            if canonical_format(target) in known
+        }
+
+        if (
+            explicit
+            and explicit != {decision["output_format"]}
+        ):
+            raise ValueError(
+                "The AI selected a different format. "
+                "Please use: convert to FORMAT."
+            )
 
         if decision["output_format"] not in outputs:
             raise ValueError(
@@ -211,6 +300,7 @@ def select_and_open(path, application):
         return open_selection(path)
 
     matches = find_applications(application)
+
     print(f"\nApplications matching: {application}")
 
     for index, app in enumerate(matches, start=1):
@@ -268,11 +358,14 @@ def select_output_and_convert(path, target, kind):
             "or video file for conversion."
         )
 
-    allowed = (
-        image_formats()
-        if kind == "image"
-        else audio_formats()
-    )
+    if kind == "image":
+        allowed = image_formats()
+    else:
+        allowed = audio_formats() + (
+            video_formats()
+            if path.suffix.lower() in VIDEO_INPUTS
+            else []
+        )
 
     if target not in allowed:
         raise ValueError("Unsupported output format.")
@@ -303,6 +396,12 @@ def select_output_and_convert(path, target, kind):
                 "PBM black/white, GIF up to 256 colors."
             )
 
+    elif target in video_formats():
+        print(
+            "Video conversion: full duration; "
+            "first video and first audio track when present."
+        )
+
     else:
         print(
             "Audio output uses 48 kHz stereo; "
@@ -320,7 +419,10 @@ def select_output_and_convert(path, target, kind):
             initialfile=f"{path.stem}_converted.{target}",
             defaultextension=f".{target}",
             filetypes=[
-                (f"{target.upper()} file", f"*.{target}")
+                (
+                    f"{target.upper()} file",
+                    f"*.{target}",
+                )
             ],
         )
     finally:
@@ -331,11 +433,12 @@ def select_output_and_convert(path, target, kind):
 
     print("Converting...")
 
-    convert = (
-        convert_image
-        if kind == "image"
-        else convert_audio
-    )
+    if kind == "image":
+        convert = convert_image
+    elif target in video_formats():
+        convert = convert_video
+    else:
+        convert = convert_audio
 
     saved = convert(path, output, target)
 
@@ -375,7 +478,11 @@ def main():
         default="small",
     )
 
-    parser.add_argument("--language", default=None)
+    parser.add_argument(
+        "--language",
+        default=None,
+    )
+
     args = parser.parse_args()
 
     selected = (
@@ -403,6 +510,7 @@ def main():
 
     images = image_formats()
     audios = audio_formats()
+    videos = video_formats()
 
     kind = kind_of(path)
     stamp = fingerprint(path)
@@ -415,14 +523,15 @@ def main():
 
     print(f"\nSelected: {path}")
 
-    # The two capability lines requested.
     print(
         "Ask questions, open files/folders, convert images "
-        "or audio, or turn an image into PDF."
+        "or audio/video, or turn an image into PDF."
     )
+
     print(
         f"Outputs — Images/PDF: {', '.join(images)} "
-        f"| Audio: {', '.join(audios)}"
+        f"| Audio: {', '.join(audios)} "
+        f"| Video: {', '.join(videos)}"
     )
 
     print(
@@ -487,7 +596,11 @@ def main():
             if kind == "image":
                 outputs = images
             elif kind == "media":
-                outputs = audios
+                outputs = audios + (
+                    videos
+                    if path.suffix.lower() in VIDEO_INPUTS
+                    else []
+                )
             else:
                 outputs = []
 
@@ -506,14 +619,24 @@ def main():
 
             if action == "clarify":
                 answer = decision["message"]
-                remember_exchange(history, question, answer)
+
+                remember_exchange(
+                    history,
+                    question,
+                    answer,
+                )
 
             elif action == "open":
                 answer = select_and_open(
                     path,
                     decision["application"].strip(),
                 )
-                remember_exchange(history, question, answer)
+
+                remember_exchange(
+                    history,
+                    question,
+                    answer,
+                )
 
             elif action == "convert":
                 answer = select_output_and_convert(
@@ -521,7 +644,12 @@ def main():
                     decision["output_format"],
                     kind,
                 )
-                remember_exchange(history, question, answer)
+
+                remember_exchange(
+                    history,
+                    question,
+                    answer,
+                )
 
             elif kind == "image":
                 if encoded_image is None:
@@ -529,6 +657,7 @@ def main():
 
                     try:
                         print("Reading image text...")
+
                         ocr_result = read_image_text(path)
 
                         ocr_status = (
@@ -573,8 +702,14 @@ def main():
             failure = (
                 f"Could not complete the request: {error}"
             )
+
             print(failure)
-            remember_exchange(history, question, failure)
+
+            remember_exchange(
+                history,
+                question,
+                failure,
+            )
 
 
 if __name__ == "__main__":
